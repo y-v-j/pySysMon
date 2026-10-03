@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=pySysMon
+Comment=Lightweight Python system monitor desktop widget
+Exec=sh -c '"$HOME/.local/share/pysysmon/launch.sh"'
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;
+X-KDE-autostart-after=panel
+X-GNOME-Autostart-enabled=true

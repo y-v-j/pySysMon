@@ -1,0 +1,6 @@
+{
+  "name": "pySysMon - Lightweight Python System Monitor",
+  "description": "Ultra-lightweight Python Conky-style desktop system monitor tailored for Bazzite OS with Fantasque Sans Mono font, live preview simulator, theme customizer, and autostart setup.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
