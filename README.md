@@ -204,6 +204,10 @@ src/, index.html, ...   Legacy web customizer prototype (see below)
 
 The `src/` directory contains a React + Vite prototype for previewing themes and generating a config. It produces the **earlier text-based version** of the widget, not the current canvas design. To run it: `npm install && npm run dev`.
 
+## See also
+
+- [**pyQuotes**](https://github.com/y-v-j/pyQuotes): a companion desktop widget with a greeting, the time and a rotating literary quote. It uses the same "Midnight Ink" look and sits just left of pySysMon by default, so the two never overlap.
+
 ## Credits
 
 - [Fantasque Sans Mono](https://github.com/belluzj/fantasque-sans) by Jany Belluz, and its [Nerd Fonts](https://www.nerdfonts.com/) build. Both are under the SIL Open Font License.
