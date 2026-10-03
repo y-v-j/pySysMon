@@ -2,7 +2,8 @@
 Type=Application
 Name=pySysMon
 Comment=Lightweight Python system monitor desktop widget
-Exec=sh -c '"$HOME/.local/share/pysysmon/launch.sh"'
+# "~", not "$HOME": systemd's autostart generator escapes "$", so sh would never expand it
+Exec=sh -c "exec ~/.local/share/pysysmon/launch.sh"
 Icon=utilities-system-monitor
 Terminal=false
 Categories=System;Monitor;

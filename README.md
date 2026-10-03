@@ -180,6 +180,9 @@ No output means no Xft. Re-run `./install.sh` with conda/Miniforge installed, or
 **No icons in the section headers.**
 A Nerd Font isn't installed or isn't first in `FONT_CANDIDATES`. Run `fc-list | grep -i "FantasqueSansM Nerd"` to check.
 
+**The widget doesn't start at login.**
+Run `systemctl --user status app-pysysmon@autostart.service`. If the log shows `$HOME/.local/share/pysysmon/launch.sh: No such file or directory`, your autostart entry comes from an older release whose `Exec=` line used `$HOME`. KDE Plasma and GNOME run autostart entries through systemd, which escapes the `$`, so the path is never expanded. Re-run `./install.sh`, or copy the current `pysysmon.desktop` to `~/.config/autostart/`.
+
 **The widget covers other windows.**
 The widget asks the window manager to keep it below other windows (`_NET_WM_STATE_BELOW`). This works on KWin and most EWMH-compliant window managers. Native Wayland compositors without XWayland aren't supported.
 
