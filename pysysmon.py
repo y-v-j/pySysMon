@@ -288,6 +288,14 @@ class X11DesktopHints:
             xlib.XQueryTree.argtypes = [ctypes.c_void_p, ctypes.c_ulong,
                                         ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
                                         ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint)]
+            P = ctypes.POINTER
+            xlib.XGetWindowProperty.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_long,
+                                                ctypes.c_long, ctypes.c_int, ctypes.c_ulong, P(ctypes.c_ulong),
+                                                P(ctypes.c_int), P(ctypes.c_ulong), P(ctypes.c_ulong),
+                                                P(ctypes.c_void_p)]
+            # A dock can vanish between calls; never let Xlib exit on that
+            self._handler = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)(lambda d, e: 0)
+            xlib.XSetErrorHandler(self._handler)
             display = xlib.XOpenDisplay(None)
             if display:
                 self.ctypes, self.xlib, self.display = ctypes, xlib, display
@@ -296,6 +304,37 @@ class X11DesktopHints:
 
     def _atom(self, name):
         return self.xlib.XInternAtom(self.display, name.encode(), 0)
+
+    def _cardinals(self, window, prop, prop_type):
+        """A 32-bit property (CARDINAL, ATOM or WINDOW list) as a list of ints."""
+        ct = self.ctypes
+        at, fmt, n, after, data = ct.c_ulong(), ct.c_int(), ct.c_ulong(), ct.c_ulong(), ct.c_void_p()
+        if self.xlib.XGetWindowProperty(self.display, window, self._atom(prop), 0, 1024, 0, prop_type,
+                                        ct.byref(at), ct.byref(fmt), ct.byref(n), ct.byref(after),
+                                        ct.byref(data)) != 0 or not data:
+            return []
+        try:
+            arr = ct.cast(data, ct.POINTER(ct.c_ulong))
+            return [arr[i] for i in range(n.value)] if fmt.value == 32 else []
+        finally:
+            self.xlib.XFree(data)
+
+    def dock_struts(self):
+        """[left, right, top, bottom] pixels reserved by X11 docks such as polybar.
+        KWin on Wayland leaves X11 struts out of the work area, so read them here."""
+        out = [0, 0, 0, 0]
+        if not self.display:
+            return out
+        root = self.xlib.XDefaultRootWindow(self.display)
+        dock = self._atom("_NET_WM_WINDOW_TYPE_DOCK")
+        for w in self._cardinals(root, "_NET_CLIENT_LIST", 33):              # 33 = XA_WINDOW
+            if dock not in self._cardinals(w, "_NET_WM_WINDOW_TYPE", 4):      # 4 = XA_ATOM
+                continue
+            strut = (self._cardinals(w, "_NET_WM_STRUT_PARTIAL", 6)          # 6 = XA_CARDINAL
+                     or self._cardinals(w, "_NET_WM_STRUT", 6))
+            for i, v in enumerate(strut[:4]):
+                out[i] = max(out[i], v)
+        return out
 
     def _set_long_property(self, prop, prop_type, values):
         arr = (self.ctypes.c_long * len(values))(*values)
@@ -434,15 +473,24 @@ class PySysMonGUI:
         self.root.update_idletasks()
         self.wm_hints = X11DesktopHints(self.root.winfo_id())
         self.wm_hints.apply()
-        # Re-assert once the WM has finished managing the window
-        self.root.after(500, self.wm_hints.apply)
+        # Re-assert once the WM has finished managing the window (KWin also
+        # applies the first requested position when it does)
+        self.root.after(500, self.reassert_window)
+
+    def reassert_window(self):
+        self.wm_hints.apply()
+        self.place_window(self.height)
 
     def place_window(self, height):
         self.height = height
+        # Offsets count from the edge of any X11 bar (e.g. polybar) on that side
+        hints = getattr(self, "wm_hints", None)
+        self.struts = hints.dock_struts() if hints else [0, 0, 0, 0]
+        left, right, top, bottom = self.struts
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
-        x = OFFSET_X if POSITION.endswith("left") else screen_w - WINDOW_WIDTH - OFFSET_X
-        y = OFFSET_Y if POSITION.startswith("top") else screen_h - height - OFFSET_Y
+        x = left + OFFSET_X if POSITION.endswith("left") else screen_w - right - WINDOW_WIDTH - OFFSET_X
+        y = top + OFFSET_Y if POSITION.startswith("top") else screen_h - bottom - height - OFFSET_Y
         self.root.geometry(f"{WINDOW_WIDTH}x{height}+{x}+{y}")
 
     # -- drawing primitives ----------------------------------------------------
@@ -649,7 +697,8 @@ class PySysMonGUI:
             y = self.card(y, "TOP PROCESSES", "procs", COLOR_WARNING, proc_body)
 
         height = int(y - self.GAP + self.PAD)
-        if height != self.height:
+        # Re-place when the content changes height or a bar comes, goes or resizes
+        if height != self.height or self.wm_hints.dock_struts() != self.struts:
             self.place_window(height)
 
 # ------------------------------------------------------------------------------

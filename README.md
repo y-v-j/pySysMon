@@ -14,6 +14,7 @@ A lightweight, Conky-style system monitor widget for the Linux desktop, written 
 ## Features
 
 - **Lives on the desktop:** the widget always stays *below* other windows, has no title bar or border, and doesn't appear in the taskbar, pager or Alt+Tab.
+- **Makes room for bars:** keeps below X11 bars such as [kBar](https://github.com/y-v-j/kBar) or another polybar, and moves back up when the bar stops. (KWin on Wayland doesn't reserve their space itself.)
 - **Clock & identity:** large clock, date, uptime, `user@host`, OS, kernel, and desktop session.
 - **Processor:** model, thread count, live load bar, a 60-second load graph, and colour-coded temperature.
 - **Memory & storage:** RAM, swap, and disk usage bars that turn yellow, then red, as they fill. Disk usage is read correctly on ostree systems such as Bazzite.
@@ -105,7 +106,7 @@ All settings are constants at the top of [`pysysmon.py`](pysysmon.py):
 | Setting | Default | Description |
 |---|---|---|
 | `POSITION` | `"top-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left` |
-| `OFFSET_X`, `OFFSET_Y` | `24` | Distance from the screen edges (px) |
+| `OFFSET_X`, `OFFSET_Y` | `24` | Distance from the screen edges, or from an X11 bar such as kBar on that side (px) |
 | `WINDOW_WIDTH` | `410` | Widget width (px). The height fits the content automatically |
 | `WINDOW_OPACITY` | `0.96` | Window opacity, `0.0`–`1.0` |
 | `FONT_CANDIDATES` | Fantasque Nerd Font, … | The first installed family is used. Icons appear only with a Nerd Font |
