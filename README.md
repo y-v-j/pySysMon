@@ -18,7 +18,7 @@ A lightweight, Conky-style system monitor widget for the Linux desktop, written 
 - **Processor:** model, thread count, live load bar, a 60-second load graph, and colour-coded temperature.
 - **Memory & storage:** RAM, swap, and disk usage bars that turn yellow, then red, as they fill. Disk usage is read correctly on ostree systems such as Bazzite.
 - **Network:** live upload and download speeds with a 60-second graph.
-- **Top processes:** the four busiest processes by CPU, with CPU and memory percentages.
+- **Top processes:** the ten busiest processes by CPU, with CPU and memory percentages (change the count with `TOP_PROCESSES`).
 - **Polished look:** "Midnight Ink" theme (`#191926`), rounded cards, a gradient divider, Nerd Font icons and antialiased Fantasque Sans Mono text.
 - **Lightweight:** one Python file. The only optional dependency is `psutil`; without it the widget reads `/proc` directly.
 - **Terminal mode:** a `--cli` mode for SSH sessions or desktops without a GUI.
@@ -112,6 +112,7 @@ All settings are constants at the top of [`pysysmon.py`](pysysmon.py):
 | `FONT_PX` | `15` | Base text size in pixels |
 | `REFRESH_RATE_MS` | `1000` | Update interval |
 | `HISTORY_LEN` | `60` | Samples kept for the CPU and network graphs |
+| `TOP_PROCESSES` | `10` | Number of processes in the top processes list |
 | `COLOR_*` | Midnight Ink | Theme colours (`COLOR_BG = "#191926"`) |
 
 After editing, re-run `./install.sh` (or copy the file to `~/.local/share/pysysmon/`) and restart the widget.

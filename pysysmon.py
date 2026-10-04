@@ -43,6 +43,7 @@ FONT_CANDIDATES = ("FantasqueSansM Nerd Font", "FantasqueSansM Nerd Font Mono",
 FONT_PX = 15                 # Base text size in pixels (other sizes derive from it)
 REFRESH_RATE_MS = 1000       # 1.0 second update cycle
 HISTORY_LEN = 60             # Samples kept for the CPU / network sparklines
+TOP_PROCESSES = 10           # Rows in the top processes list
 WINDOW_WIDTH = 410
 WINDOW_OPACITY = 0.96
 POSITION = "top-right"       # top-right, top-left, bottom-right, bottom-left
@@ -229,7 +230,7 @@ class SystemDataCollector:
         except Exception:
             return "N/A"
 
-    def get_top_processes(self, limit=4):
+    def get_top_processes(self, limit=TOP_PROCESSES):
         if not HAS_PSUTIL:
             return []
         try:
@@ -531,7 +532,7 @@ class PySysMonGUI:
         ram_used, ram_total, ram_pct, swap_used, swap_total, swap_pct = c.get_ram_info()
         root_used, root_total, home_used, home_total = c.get_storage_info()
         uptime = c.get_uptime()
-        top_procs = c.get_top_processes(limit=4)
+        top_procs = c.get_top_processes()
 
         self.cv.delete("all")
         W = WINDOW_WIDTH
