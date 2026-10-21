@@ -43,7 +43,7 @@ FONT_CANDIDATES = ("FantasqueSansM Nerd Font", "FantasqueSansM Nerd Font Mono",
 FONT_PX = 15                 # Base text size in pixels (other sizes derive from it)
 REFRESH_RATE_MS = 1000       # 1.0 second update cycle
 HISTORY_LEN = 60             # Samples kept for the CPU / network sparklines
-TOP_PROCESSES = 10           # Rows in the top processes list
+TOP_PROCESSES = 8            # Rows in the top processes list
 WINDOW_WIDTH = 410
 WINDOW_OPACITY = 0.96
 POSITION = "top-right"       # top-right, top-left, bottom-right, bottom-left
@@ -293,6 +293,9 @@ class X11DesktopHints:
                                                 ctypes.c_long, ctypes.c_int, ctypes.c_ulong, P(ctypes.c_ulong),
                                                 P(ctypes.c_int), P(ctypes.c_ulong), P(ctypes.c_ulong),
                                                 P(ctypes.c_void_p)]
+            xlib.XDefaultScreen.argtypes = [ctypes.c_void_p]
+            xlib.XDisplayWidth.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            xlib.XDisplayHeight.argtypes = [ctypes.c_void_p, ctypes.c_int]
             # A dock can vanish between calls; never let Xlib exit on that
             self._handler = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)(lambda d, e: 0)
             xlib.XSetErrorHandler(self._handler)
@@ -333,6 +336,24 @@ class X11DesktopHints:
             strut = (self._cardinals(w, "_NET_WM_STRUT_PARTIAL", 6)          # 6 = XA_CARDINAL
                      or self._cardinals(w, "_NET_WM_STRUT", 6))
             for i, v in enumerate(strut[:4]):
+                out[i] = max(out[i], v)
+        return out
+
+    def reserved(self):
+        """[left, right, top, bottom] to keep clear: X11 bar struts plus the
+        panels in the work area (KWin publishes Plasma's panels there), so
+        pySysMon lines up with pyQuotes and pyReader below a Plasma top bar."""
+        out = self.dock_struts()
+        if not self.display:
+            return out
+        root = self.xlib.XDefaultRootWindow(self.display)
+        area = self._cardinals(root, "_NET_WORKAREA", 6)[:4]
+        if len(area) == 4:
+            wx, wy, ww, wh = area
+            screen = self.xlib.XDefaultScreen(self.display)
+            sw = self.xlib.XDisplayWidth(self.display, screen)
+            sh = self.xlib.XDisplayHeight(self.display, screen)
+            for i, v in enumerate((wx, sw - wx - ww, wy, sh - wy - wh)):
                 out[i] = max(out[i], v)
         return out
 
@@ -483,15 +504,16 @@ class PySysMonGUI:
 
     def place_window(self, height):
         self.height = height
-        # Offsets count from the edge of any X11 bar (e.g. polybar) on that side
+        # Offsets count from the edge of any panel or X11 bar (e.g. polybar) on that side
         hints = getattr(self, "wm_hints", None)
-        self.struts = hints.dock_struts() if hints else [0, 0, 0, 0]
+        self.struts = hints.reserved() if hints else [0, 0, 0, 0]
         left, right, top, bottom = self.struts
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
         x = left + OFFSET_X if POSITION.endswith("left") else screen_w - right - WINDOW_WIDTH - OFFSET_X
         y = top + OFFSET_Y if POSITION.startswith("top") else screen_h - bottom - height - OFFSET_Y
         self.root.geometry(f"{WINDOW_WIDTH}x{height}+{x}+{y}")
+        self.wanted_pos = (x, y)
 
     # -- drawing primitives ----------------------------------------------------
     def text(self, x, y, s, font, color, anchor="nw"):
@@ -697,8 +719,10 @@ class PySysMonGUI:
             y = self.card(y, "TOP PROCESSES", "procs", COLOR_WARNING, proc_body)
 
         height = int(y - self.GAP + self.PAD)
-        # Re-place when the content changes height or a bar comes, goes or resizes
-        if height != self.height or self.wm_hints.dock_struts() != self.struts:
+        # Re-place when the content changes height, a bar comes, goes or resizes,
+        # or the window manager moved the window (e.g. while panels restarted)
+        moved = getattr(self, "wanted_pos", None) not in (None, (self.root.winfo_rootx(), self.root.winfo_rooty()))
+        if height != self.height or self.wm_hints.reserved() != self.struts or moved:
             self.place_window(height)
 
 # ------------------------------------------------------------------------------
